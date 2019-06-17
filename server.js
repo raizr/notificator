@@ -48,10 +48,6 @@ connectToDB(dbUrl);
       { $limit: 100 },
       { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
     ]);
-  /*
-    .find({}, { id: 1, _id: 0 })
-    .limit(100);
-  */
   let players = [];
   let idDocs = (await elements);
   players = idDocs[0].id;
@@ -74,13 +70,12 @@ connectToDB(dbUrl);
     */
     // logger.info(`el ${lastUserId}} length: ${players.length}`);
     try {
-      logger.info(vkAPI.sendNotification(players, 'tst msg'));
+      vkAPI.sendNotification(players, 'tst msg');
     } catch (err) {
-      logger.error(err);
       logger.error(vkAPI.errorToString(err));
     }
     lastUserId = idDocs[0].lastId;
     logger.info(lastUserId);
-  }, 3500);
+  }, 600);
   logger.info('finish');
 }());

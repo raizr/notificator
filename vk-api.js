@@ -11,6 +11,13 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
 
+class VKAPIError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'VKAPIError';
+  }
+}
+
 // eslint-disable-next-line no-unused-vars
 class VKAPI {
   constructor() {
@@ -28,22 +35,22 @@ class VKAPI {
   // eslint-disable-next-line consistent-return
   sendNotification(ids, message) {
     if (this.sendNotifyCounter >= 3) {
-      throw new Error(1);
+      throw new VKAPIError(1);
     }
-    if (getRandomInt(0, 50) === 1) {
-      throw new Error(2);
+    if (getRandomInt(0, 10) === 1) {
+      throw new VKAPIError(2);
     }
     if (!Array.isArray(ids)) {
-      throw new Error(3);
+      throw new VKAPIError(3);
     }
     const users = [];
     ids.forEach((id) => {
       if (getRandomInt(0, 10) === 1) {
         if (!Number.isInteger(id)) {
-          throw new Error(3);
+          throw new VKAPIError(3);
         }
         if (id <= 0) {
-          throw new Error(3);
+          throw new VKAPIError(3);
         }
         logger.info(`${message} sended to ${id}`);
         users.push(id);

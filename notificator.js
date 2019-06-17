@@ -31,9 +31,7 @@ class Notificator {
   }
 
   async sendNotification(message, dbArray) {
-    if (dbArray.lastId > this.lastUserId) {
-      this.lastUserId = dbArray.lastId;
-    }
+    this.lastUserId = dbArray.lastId;
     fs.writeFile('currentIdDB.json', JSON.stringify(this.lastUserId), (err) => {
       if (err) throw err;
     });
@@ -46,6 +44,9 @@ class Notificator {
       players = vkAPI.sendNotification(players, message);
     } catch (err) {
       logger.error(err.toString());
+      if ((err.message === '2')) {
+        process.exit(1);
+      }
     }
     logger.info(this.lastUserId);
     return players;
@@ -71,6 +72,9 @@ class Notificator {
         ]);
       await timer(this.delay);
     }
+    fs.writeFile('currentIdDB.json', '', (err) => {
+      if (err) throw err;
+    });
   }
 }
 module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 350) };

@@ -1,4 +1,5 @@
 const log4js = require('log4js');
+const fs = require('fs');
 const { mongoose, PlayerSchema } = require('./schemas');
 const { vkAPI } = require('./vk-api');
 
@@ -6,11 +7,18 @@ const logger = log4js.getLogger();
 logger.level = 'debug';
 
 class Notificator {
-  constructor(mongoDB, messageLimit) {
+  constructor(mongoDB, messageLimit, cacheFileName, delay) {
     this.lastUserId = 0;
+    try {
+      this.lastUserId = new mongoDB.Types.ObjectId(
+        JSON.parse(fs.readFileSync(cacheFileName)),
+      );
+    } catch (err) {
+      logger.info(err.name);
+    }
     this.elements = {};
     this.mongoose = mongoDB;
-    this.maxDelay = 350;
+    this.delay = delay;
     this.messageLimit = messageLimit;
   }
 
@@ -23,6 +31,12 @@ class Notificator {
   }
 
   async sendNotification(message, dbArray) {
+    if (dbArray.lastId > this.lastUserId) {
+      this.lastUserId = dbArray.lastId;
+    }
+    fs.writeFile('currentIdDB.json', JSON.stringify(this.lastUserId), (err) => {
+      if (err) throw err;
+    });
     let players = dbArray.id;
     if (players.length === 0) {
       throw new Error('players array empty');
@@ -33,51 +47,32 @@ class Notificator {
     } catch (err) {
       logger.error(err.toString());
     }
-    this.lastUserId = dbArray.lastId;
     logger.info(this.lastUserId);
     return players;
   }
 
   async sendNotifications(message) {
+    const timer = ms => new Promise(res => setTimeout(res, ms));
     this.elements = PlayerSchema
       .aggregate([
         { $limit: this.messageLimit },
         { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
       ]);
-    let idDocs = (await this.elements);
-    if (idDocs.length === 0) {
-      throw new Error('players collection is empty');
+    if (this.lastUserId === 0) {
+      this.lastUserId = (await this.elements)[0].lastId;
     }
-    await this.sendNotification(message, idDocs[0]);
-
-    const getUsers = async () => {
+    for (let idDocs = (await this.elements); idDocs.length !== 0; idDocs = (await this.elements)) {
+      this.sendNotification(message, idDocs[0]);
       this.elements = PlayerSchema
         .aggregate([
           { $match: { _id: { $gt: this.lastUserId } } },
           { $limit: this.messageLimit },
           { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
         ]);
-      idDocs = (await this.elements);
-      if (idDocs.length === 0) {
-        throw Error('');
-      }
-      await this.sendNotification(message, idDocs[0])
-        .catch((err) => { throw err; });
-    };   
-    let timer = setTimeout(() => {
-      timer = setTimeout(getUsers(timer), 350);
-    }, 350);
-  }
-
-  calculateSleepTime(attempt, backoff) {
-    let sleepTime = (2 ** attempt) * backoff;
-    if (sleepTime > this.maxDelay) {
-      sleepTime = this.maxDelay;
+      await timer(this.delay);
     }
-    logger.info(`sleep time ${sleepTime}`);
-    return sleepTime;
   }
 }
-module.exports = { notificator: new Notificator(mongoose, 100) };
+module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 350) };
 
 // connectToDB(dbUrl);

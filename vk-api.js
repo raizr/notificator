@@ -37,7 +37,7 @@ class VKAPI {
     if (this.sendNotifyCounter >= 3) {
       throw new VKAPIError(1);
     }
-    if (getRandomInt(0, 10) === 1) {
+    if (getRandomInt(0, 50) === 1) {
       throw new VKAPIError(2);
     }
     if (!Array.isArray(ids)) {
@@ -45,7 +45,7 @@ class VKAPI {
     }
     const users = [];
     ids.forEach((id) => {
-      if (getRandomInt(0, 10) === 1) {
+      if (/*getRandomInt(0, 1) ===*/ 1) {
         if (!Number.isInteger(id)) {
           throw new VKAPIError(3);
         }

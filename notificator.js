@@ -5,7 +5,7 @@ const { vkAPI } = require('./vk-api');
 
 const logger = log4js.getLogger();
 logger.level = 'debug';
-
+const timer = ms => new Promise(res => setTimeout(res, ms));
 class Notificator {
   constructor(mongoDB, messageLimit, cacheFileName, delay) {
     this.lastUserId = 0;
@@ -39,21 +39,30 @@ class Notificator {
     if (players.length === 0) {
       throw new Error('players array empty');
     }
-    logger.info(`players length ${players.length}`);
-    try {
-      players = vkAPI.sendNotification(players, message);
-    } catch (err) {
-      logger.error(err.toString());
-      if ((err.message === '2')) {
-        process.exit(1);
+    const vkSender = async (users, msg) => {
+      try {
+        players = vkAPI.sendNotification(users, msg);
+      } catch (err) {
+        logger.error(err.message);
+        if ((err.message === '2')) {
+          process.exit(1);
+        } else if ((err.message === '1')) {
+          await timer(300);
+          players = await vkSender(users, msg)
+            .catch((error) => { throw error; });
+        } else {
+          throw err;
+        }
       }
-    }
+    };
+    logger.info(`players length ${players.length}`);
+    players = await vkSender(players, message)
+      .catch((err) => { throw err; });
     logger.info(this.lastUserId);
     return players;
   }
 
   async sendNotifications(message) {
-    const timer = ms => new Promise(res => setTimeout(res, ms));
     this.elements = PlayerSchema
       .aggregate([
         { $limit: this.messageLimit },
@@ -63,7 +72,8 @@ class Notificator {
       this.lastUserId = (await this.elements)[0].lastId;
     }
     for (let idDocs = (await this.elements); idDocs.length !== 0; idDocs = (await this.elements)) {
-      this.sendNotification(message, idDocs[0]);
+      this.sendNotification(message, idDocs[0])
+        .catch((err) => { throw err; });
       this.elements = PlayerSchema
         .aggregate([
           { $match: { _id: { $gt: this.lastUserId } } },
@@ -77,6 +87,6 @@ class Notificator {
     });
   }
 }
-module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 350) };
+module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 300) };
 
 // connectToDB(dbUrl);

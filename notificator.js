@@ -9,9 +9,10 @@ const timer = ms => new Promise(res => setTimeout(res, ms));
 class Notificator {
   constructor(mongoDB, messageLimit, cacheFileName, delay) {
     this.lastUserId = 0;
+    this.cacheFileName = cacheFileName;
     try {
       this.lastUserId = new mongoDB.Types.ObjectId(
-        JSON.parse(fs.readFileSync(cacheFileName)),
+        JSON.parse(fs.readFileSync(this.cacheFileName)),
       );
     } catch (err) {
       logger.info(err.name);
@@ -25,39 +26,41 @@ class Notificator {
   connectToDB(url) {
     this.mongoose.connect(url, { useNewUrlParser: true })
       .then(() => {
-        logger.info('connected to mongodb');
+        logger.info('connected to db');
       })
       .catch(err => logger.error(err));
   }
 
   async sendNotification(message, dbArray) {
     this.lastUserId = dbArray.lastId;
-    fs.writeFile('currentIdDB.json', JSON.stringify(this.lastUserId), (err) => {
+    await fs.writeFileSync(this.cacheFileName, JSON.stringify(this.lastUserId), (err) => {
       if (err) throw err;
     });
     let players = dbArray.id;
+    let returnUsers = [];
     if (players.length === 0) {
       throw new Error('players array empty');
     }
     const vkSender = async (users, msg) => {
       try {
-        players = vkAPI.sendNotification(users, msg);
+        returnUsers = vkAPI.sendNotification(users, msg);
       } catch (err) {
         logger.error(err.message);
         if ((err.message === '2')) {
           process.exit(1);
         } else if ((err.message === '1')) {
           await timer(300);
-          players = await vkSender(users, msg)
+          vkSender(users, msg)
+            .then((data) => { players = data; })
             .catch((error) => { throw error; });
         } else {
           throw err;
         }
       }
     };
-    logger.info(`players length ${players.length}`);
-    players = await vkSender(players, message)
+    vkSender(players, message)
       .catch((err) => { throw err; });
+    logger.info(`returnUsers length ${returnUsers.length}`);
     logger.info(this.lastUserId);
     return players;
   }
@@ -82,7 +85,7 @@ class Notificator {
         ]);
       await timer(this.delay);
     }
-    fs.writeFile('currentIdDB.json', '', (err) => {
+    await fs.writeFile(this.cacheFileName, '', (err) => {
       if (err) throw err;
     });
   }

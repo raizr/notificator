@@ -1,10 +1,10 @@
 const log4VK = require('log4js');
-
+/*
 log4VK.configure({
   appenders: { file: { type: 'file', filename: 'logs/vkapi.log' } },
   categories: { default: { appenders: ['file'], level: 'info' } },
 });
-
+*/
 const logger = log4VK.getLogger('vkapi');
 
 function getRandomInt(min, max) {
@@ -38,8 +38,8 @@ class VKAPI {
     }
     const users = [];
     ids.forEach((id) => {
-      if (getRandomInt(0, 5) === 1) {
-        if (Number.isInteger(id)) {
+      if (getRandomInt(0, 10) === 1) {
+        if (!Number.isInteger(id)) {
           throw new Error(3);
         }
         if (id <= 0) {

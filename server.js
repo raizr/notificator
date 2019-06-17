@@ -43,36 +43,30 @@ connectToDB(dbUrl);
 
 (async function sendNotifications() {
   let lastUserId;
-  const updateUserId = (player) => {
-    lastUserId = player;
-  };
   let elements = PlayerSchema
     .aggregate([
       { $limit: 100 },
-      { $group: { _id: null, id: { $addToSet: '$id' } } },
+      { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
     ]);
   /*
     .find({}, { id: 1, _id: 0 })
     .limit(100);
   */
   let players = [];
-  players = (await elements)[0].id;
+  let idDocs = (await elements);
+  players = idDocs[0].id;
   logger.info(`players length ${players.length}`);
-  lastUserId = players[players.length - 1];
+  lastUserId = idDocs[0].lastId;
   logger.info(`first el ${players.length} ${lastUserId}`);
   setInterval(async () => {
     elements = PlayerSchema
       .aggregate([
+        { $match: { _id: { $gt: lastUserId } } },
         { $limit: 100 },
-        {
-          $project: {
-            id: { $gt: ['$id', lastUserId] },
-          },
-        },
-        { $group: { _id: null, id: { $addToSet: '$id' } } },
+        { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
       ]);
-    const allElements = (await elements);
-    players = allElements[0].id;
+    idDocs = (await elements);
+    players = idDocs[0].id;
     logger.info(`players length ${players.length}`);
     /*
     elements.find({ id: { $gt: lastUserId } })
@@ -80,13 +74,13 @@ connectToDB(dbUrl);
     */
     // logger.info(`el ${lastUserId}} length: ${players.length}`);
     try {
-      console.log(players);
-      vkAPI.sendNotification(players, 'tst msg');
+      logger.info(vkAPI.sendNotification(players, 'tst msg'));
     } catch (err) {
       logger.error(err);
       logger.error(vkAPI.errorToString(err));
     }
-    players.forEach(updateUserId);
+    lastUserId = idDocs[0].lastId;
+    logger.info(lastUserId);
   }, 3500);
   logger.info('finish');
 }());

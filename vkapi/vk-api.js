@@ -8,7 +8,6 @@ class VKAPIError extends Error {
     this.name = 'VKAPIError';
   }
 }
-
 // eslint-disable-next-line no-unused-vars
 class VKAPI {
   constructor() {
@@ -23,7 +22,6 @@ class VKAPI {
     return this.errorMap.get(parseInt(error.message, 10));
   }
 
-  // eslint-disable-next-line consistent-return
   sendNotification(ids, message) {
     if (this.sendNotifyCounter >= 3) {
       throw new VKAPIError(1);

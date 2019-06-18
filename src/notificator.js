@@ -12,18 +12,18 @@ const logger = log4js.getLogger('Notificator');
 logger.level = 'debug';
 const timer = ms => new Promise(res => setTimeout(res, ms));
 class Notificator {
-  constructor(mongoDB, messageLimit, cacheFileName, delay) {
+  constructor(messageLimit, cacheFileName, delay) {
     this.lastUserId = 0;
     this.cacheFileName = cacheFileName;
     try {
-      this.lastUserId = new mongoDB.Types.ObjectId(
+      this.lastUserId = new mongoose.Types.ObjectId(
         JSON.parse(fs.readFileSync(this.cacheFileName)),
       );
     } catch (err) {
       logger.info(err.name);
     }
     this.elements = {};
-    this.mongoose = mongoDB;
+    this.mongoose = mongoose;
     this.delay = delay;
     this.messageLimit = messageLimit;
   }
@@ -51,7 +51,7 @@ class Notificator {
     const vkSender = async (users, msg) => {
       try {
         returnUsers = vkAPI.sendNotification(users, msg);
-        logger.info(`Message "${message}" sended to: ${returnUsers}`);
+        logger.info(`Message "${message}" sended to: ${returnUsers} length: ${returnUsers.length}`);
       } catch (err) {
         logger.error(vkAPI.errorToString(err));
         if ((err.message === '2')) {
@@ -66,8 +66,6 @@ class Notificator {
     };
     await vkSender(players, message)
       .catch((err) => { throw err; });
-    logger.info(`returnUsers length ${returnUsers.length}`);
-    logger.info(this.lastUserId);
     return players;
   }
 
@@ -108,6 +106,4 @@ class Notificator {
     });
   }
 }
-module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 335) };
-
-// connectToDB(dbUrl);
+module.exports = { Notificator };

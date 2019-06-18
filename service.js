@@ -1,7 +1,9 @@
 const http = require('http');
 const url = require('url');
-const { notificator } = require('./src/notificator');
+const { Notificator } = require('./src/notificator');
 const { dbUrl } = require('./config');
+
+const notificator = new Notificator(100, 'currentIdDB.json', 335);
 
 notificator.connectToDB(dbUrl);
 

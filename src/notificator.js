@@ -2,44 +2,48 @@ const log4js = require('log4js');
 const fs = require('fs');
 const { mongoose, PlayerSchema } = require('./schemas');
 const { vkAPI } = require('../vkapi/vk-api');
-/*
+
 log4js.configure({
   appenders: { file: { type: 'file', filename: 'logs/vkapi.log' } },
   categories: { default: { appenders: ['file'], level: 'info' } },
 });
-*/
+
 const logger = log4js.getLogger('Notificator');
 logger.level = 'debug';
 const timer = ms => new Promise(res => setTimeout(res, ms));
 class Notificator {
-  constructor(mongoDB, messageLimit, cacheFileName, delay) {
+  constructor(messageLimit, cacheFileName, delay) {
     this.lastUserId = 0;
+    this.message = '';
     this.cacheFileName = cacheFileName;
     try {
-      this.lastUserId = new mongoDB.Types.ObjectId(
-        JSON.parse(fs.readFileSync(this.cacheFileName)),
-      );
+      const [Id, message] = JSON.parse(fs.readFileSync(this.cacheFileName));
+      this.lastUserId = new mongoose.Types.ObjectId(Id);
+      this.message = message;
     } catch (err) {
       logger.info(err.name);
     }
     this.elements = {};
-    this.mongoose = mongoDB;
+    this.mongoose = mongoose;
     this.delay = delay;
     this.messageLimit = messageLimit;
   }
 
   connectToDB(url) {
-    this.mongoose.connect(url, { useNewUrlParser: true })
+    this.mongoose.connect(url, { useCreateIndex: true, useNewUrlParser: true })
       .then(() => {
         logger.info('connected to db');
       })
-      .catch(err => logger.error(err));
+      .catch((err) => { logger.error(err.message); });
+    if (this.lastUserId !== 0 && this.message !== '') {
+      this.sendNotifications(this.message);
+    }
   }
 
   async sendNotification(message, dbArray) {
     this.lastUserId = dbArray.lastId;
     await fs.writeFileSync(this.cacheFileName,
-      JSON.stringify(this.lastUserId),
+      JSON.stringify([this.lastUserId, message]),
       (err) => {
         if (err) throw err;
       });
@@ -51,7 +55,7 @@ class Notificator {
     const vkSender = async (users, msg) => {
       try {
         returnUsers = vkAPI.sendNotification(users, msg);
-        logger.info(`Message "${message}" sended to: ${returnUsers}`);
+        logger.info(`Message "${message}" sended to: ${returnUsers} length: ${returnUsers.length}`);
       } catch (err) {
         logger.error(vkAPI.errorToString(err));
         if ((err.message === '2')) {
@@ -66,8 +70,6 @@ class Notificator {
     };
     await vkSender(players, message)
       .catch((err) => { throw err; });
-    logger.info(`returnUsers length ${returnUsers.length}`);
-    logger.info(this.lastUserId);
     return players;
   }
 
@@ -75,27 +77,41 @@ class Notificator {
     this.elements = PlayerSchema
       .aggregate([
         { $limit: this.messageLimit },
-        { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
+        {
+          $group: {
+            _id: null,
+            lastId: { $last: '$_id' },
+            id: { $addToSet: '$id' },
+          },
+        },
       ]);
-    if (this.lastUserId === 0) {
-      this.lastUserId = (await this.elements)[0].lastId;
+    let idDocs = (await this.elements);
+    if (idDocs.length === 0) {
+      throw new Error('user list is empty');
     }
-    for (let idDocs = (await this.elements); idDocs.length !== 0; idDocs = (await this.elements)) {
+    if (this.lastUserId === 0) {
+      this.lastUserId = idDocs[0].lastId;
+    }
+    for (; idDocs.length !== 0; idDocs = (await this.elements)) {
       await this.sendNotification(message, idDocs[0])
         .catch((err) => { throw err; });
       this.elements = PlayerSchema
         .aggregate([
           { $match: { _id: { $gt: this.lastUserId } } },
           { $limit: this.messageLimit },
-          { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
+          {
+            $group: {
+              _id: null,
+              lastId: { $last: '$_id' },
+              id: { $addToSet: '$id' },
+            },
+          },
         ]);
       await timer(this.delay);
     }
     await fs.writeFile(this.cacheFileName, '', (err) => {
-      if (err) throw err;
+      if (err) { throw err; }
     });
   }
 }
-module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 335) };
-
-// connectToDB(dbUrl);
+module.exports = { Notificator, logger };

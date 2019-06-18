@@ -1,23 +1,16 @@
-const log4js = require('log4js');
 const http = require('http');
 const url = require('url');
 const { notificator } = require('./src/notificator');
 const { dbUrl } = require('./config');
 
-const log = log4js.getLogger();
-
 notificator.connectToDB(dbUrl);
-/*
-notificator.sendNotifications('tst msg')
-  .catch((err) => { log.error(err.message); });
-*/
 
 function verifyTemplateMessage(template, maxLength) {
-  if (template === undefined || template === "") {
+  if (template === undefined || template === '') {
     throw Error('Template is empty');
   }
   if (template.length > maxLength) {
-    throw Error(`Template too long ${maxLength}`);
+    throw Error(`Template is longer than ${maxLength} characters`);
   }
 }
 

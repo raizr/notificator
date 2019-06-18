@@ -2,8 +2,13 @@ const log4js = require('log4js');
 const fs = require('fs');
 const { mongoose, PlayerSchema } = require('./schemas');
 const { vkAPI } = require('./vk-api');
-
-const logger = log4js.getLogger();
+/*
+log4js.configure({
+  appenders: { file: { type: 'file', filename: 'logs/vkapi.log' } },
+  categories: { default: { appenders: ['file'], level: 'info' } },
+});
+*/
+const logger = log4js.getLogger('Notificator');
 logger.level = 'debug';
 const timer = ms => new Promise(res => setTimeout(res, ms));
 class Notificator {
@@ -33,9 +38,11 @@ class Notificator {
 
   async sendNotification(message, dbArray) {
     this.lastUserId = dbArray.lastId;
-    await fs.writeFileSync(this.cacheFileName, JSON.stringify(this.lastUserId), (err) => {
-      if (err) throw err;
-    });
+    await fs.writeFileSync(this.cacheFileName,
+      JSON.stringify(this.lastUserId),
+      (err) => {
+        if (err) throw err;
+      });
     let players = dbArray.id;
     let returnUsers = [];
     if (players.length === 0) {
@@ -44,21 +51,20 @@ class Notificator {
     const vkSender = async (users, msg) => {
       try {
         returnUsers = vkAPI.sendNotification(users, msg);
+        logger.info(`Message "${message}" sended to: ${returnUsers}`);
       } catch (err) {
-        logger.error(err.message);
+        logger.error(vkAPI.errorToString(err));
         if ((err.message === '2')) {
           process.exit(1);
         } else if ((err.message === '1')) {
-          await timer(300);
+          await timer(this.delay);
           vkSender(users, msg)
             .then((data) => { players = data; })
             .catch((error) => { throw error; });
-        } else {
-          throw err;
         }
       }
     };
-    vkSender(players, message)
+    await vkSender(players, message)
       .catch((err) => { throw err; });
     logger.info(`returnUsers length ${returnUsers.length}`);
     logger.info(this.lastUserId);
@@ -75,7 +81,7 @@ class Notificator {
       this.lastUserId = (await this.elements)[0].lastId;
     }
     for (let idDocs = (await this.elements); idDocs.length !== 0; idDocs = (await this.elements)) {
-      this.sendNotification(message, idDocs[0])
+      await this.sendNotification(message, idDocs[0])
         .catch((err) => { throw err; });
       this.elements = PlayerSchema
         .aggregate([
@@ -90,6 +96,6 @@ class Notificator {
     });
   }
 }
-module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 300) };
+module.exports = { notificator: new Notificator(mongoose, 100, 'currentIdDB.json', 335) };
 
 // connectToDB(dbUrl);

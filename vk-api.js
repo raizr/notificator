@@ -1,12 +1,3 @@
-const log4VK = require('log4js');
-/*
-log4VK.configure({
-  appenders: { file: { type: 'file', filename: 'logs/vkapi.log' } },
-  categories: { default: { appenders: ['file'], level: 'info' } },
-});
-*/
-const logger = log4VK.getLogger('vkapi');
-
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
@@ -37,26 +28,27 @@ class VKAPI {
     if (this.sendNotifyCounter >= 3) {
       throw new VKAPIError(1);
     }
-    if (getRandomInt(0, 2) === 1) {
+    if (getRandomInt(0, 100) === 1) {
       throw new VKAPIError(2);
     }
     if (!Array.isArray(ids)) {
       throw new VKAPIError(3);
     }
+    if (ids.length === 0 || ids.length > 100) {
+      throw new VKAPIError(3);
+    }
     const users = [];
     ids.forEach((id) => {
-      if (getRandomInt(0, 50) === 1) {
+      if (getRandomInt(0, 2) === 1) {
         if (!Number.isInteger(id)) {
           throw new VKAPIError(3);
         }
         if (id <= 0) {
           throw new VKAPIError(3);
         }
-        logger.info(`${message} sended to ${id}`);
         users.push(id);
       }
     });
-    logger.info(users.length);
     this.sendNotifyCounter++;
     setTimeout(() => {
       this.sendNotifyCounter = 0;

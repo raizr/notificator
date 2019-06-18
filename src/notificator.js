@@ -75,7 +75,13 @@ class Notificator {
     this.elements = PlayerSchema
       .aggregate([
         { $limit: this.messageLimit },
-        { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
+        {
+          $group: {
+            _id: null,
+            lastId: { $last: '$_id' },
+            id: { $addToSet: '$id' },
+          },
+        },
       ]);
     if (this.lastUserId === 0) {
       this.lastUserId = (await this.elements)[0].lastId;
@@ -87,12 +93,18 @@ class Notificator {
         .aggregate([
           { $match: { _id: { $gt: this.lastUserId } } },
           { $limit: this.messageLimit },
-          { $group: { _id: null, lastId: { $last: '$_id' }, id: { $addToSet: '$id' } } },
+          {
+            $group: {
+              _id: null,
+              lastId: { $last: '$_id' },
+              id: { $addToSet: '$id' },
+            },
+          },
         ]);
       await timer(this.delay);
     }
     await fs.writeFile(this.cacheFileName, '', (err) => {
-      if (err) throw err;
+      if (err) { throw err; }
     });
   }
 }

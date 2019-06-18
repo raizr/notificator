@@ -1,6 +1,7 @@
 const http = require('http');
 const url = require('url');
 const { Notificator, logger } = require('./src/notificator');
+// module.exports = { dbUrl: `mongodb://localhost:27017/${dbName}` };
 const { dbUrl } = require('./config');
 
 const notificator = new Notificator(100, 'currentIdDB.json', 335);

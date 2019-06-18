@@ -23,35 +23,37 @@ class VKAPI {
   }
 
   sendNotification(ids, message) {
-    if (this.sendNotifyCounter >= 3) {
-      throw new VKAPIError(1);
-    }
-    if (getRandomInt(0, 100) === 1) {
-      throw new VKAPIError(2);
-    }
-    if (!Array.isArray(ids)) {
-      throw new VKAPIError(3);
-    }
-    if (ids.length === 0 || ids.length > 100) {
-      throw new VKAPIError(3);
-    }
-    const users = [];
-    ids.forEach((id) => {
-      if (getRandomInt(0, 2) === 1) {
-        if (!Number.isInteger(id)) {
-          throw new VKAPIError(3);
-        }
-        if (id <= 0) {
-          throw new VKAPIError(3);
-        }
-        users.push(id);
+    return new Promise((resolve, reject) => {
+      if (this.sendNotifyCounter >= 3) {
+        reject(new VKAPIError(1));
       }
+      if (getRandomInt(0, 100) === 1) {
+        reject(new VKAPIError(2));
+      }
+      if (!Array.isArray(ids)) {
+        reject(new VKAPIError(3));
+      }
+      if (ids.length === 0 || ids.length > 100) {
+        reject(new VKAPIError(3));
+      }
+      const users = [];
+      ids.forEach((id) => {
+        if (getRandomInt(0, 2) === 1) {
+          if (!Number.isInteger(id)) {
+            reject(new VKAPIError(3));
+          }
+          if (id <= 0) {
+            reject(new VKAPIError(3));
+          }
+          users.push(id);
+        }
+      });
+      this.sendNotifyCounter++;
+      setTimeout(() => {
+        this.sendNotifyCounter = 0;
+      }, 1000);
+      resolve(users);
     });
-    this.sendNotifyCounter++;
-    setTimeout(() => {
-      this.sendNotifyCounter = 0;
-    }, 1000);
-    return users;
   }
 }
 module.exports = { vkAPI: new VKAPI() };

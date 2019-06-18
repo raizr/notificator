@@ -48,25 +48,27 @@ class Notificator {
         if (err) throw err;
       });
     let players = dbArray.id;
-    let returnUsers = [];
     if (players.length === 0) {
       throw new Error('players array empty');
     }
     const vkSender = async (users, msg) => {
-      try {
-        returnUsers = vkAPI.sendNotification(users, msg);
-        logger.info(`Message "${message}" sended to: ${returnUsers} length: ${returnUsers.length}`);
-      } catch (err) {
-        logger.error(vkAPI.errorToString(err));
-        if ((err.message === '2')) {
-          process.exit(1);
-        } else if ((err.message === '1')) {
-          await timer(this.delay);
-          vkSender(users, msg)
-            .then((data) => { players = data; })
-            .catch((error) => { throw error; });
-        }
-      }
+      vkAPI.sendNotification(users, msg)
+        .then((readyUsers) => {
+          logger.info(`Message "${message}"
+          sended to: ${readyUsers}
+          length: ${readyUsers.length}`);
+        })
+        .catch(async (err) => {
+          logger.error(vkAPI.errorToString(err));
+          if ((err.message === '2')) {
+            process.exit(1);
+          } else if ((err.message === '1')) {
+            await timer(this.delay);
+            vkSender(users, msg)
+              .then((data) => { players = data; })
+              .catch((error) => { throw error; });
+          }
+        });
     };
     await vkSender(players, message)
       .catch((err) => { throw err; });

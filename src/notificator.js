@@ -17,9 +17,12 @@ class Notificator {
     this.message = '';
     this.cacheFileName = cacheFileName;
     try {
-      const [Id, message] = JSON.parse(fs.readFileSync(this.cacheFileName));
-      this.lastUserId = new mongoose.Types.ObjectId(Id);
-      this.message = message;
+      const cacheString = fs.readFileSync(this.cacheFileName);
+      if (cacheString.length) {
+        const [Id, message] = JSON.parse(fs.readFileSync(this.cacheFileName));
+        this.lastUserId = new mongoose.Types.ObjectId(Id);
+        this.message = message;
+      }
     } catch (err) {
       logger.info(err.name);
     }

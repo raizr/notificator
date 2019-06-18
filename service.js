@@ -1,6 +1,6 @@
 const http = require('http');
 const url = require('url');
-const { Notificator } = require('./src/notificator');
+const { Notificator, logger } = require('./src/notificator');
 const { dbUrl } = require('./config');
 
 const notificator = new Notificator(100, 'currentIdDB.json', 335);
@@ -21,7 +21,8 @@ http.createServer((req, res) => {
   if (currentUrl.pathname === '/send') {
     try {
       verifyTemplateMessage(currentUrl.query.template, 400);
-      notificator.sendNotifications(currentUrl.query.template);
+      notificator.sendNotifications(currentUrl.query.template)
+        .catch((err) => { logger.error(err.message); });
       res.writeHead(200);
       res.end('Start sending');
     } catch (err) {

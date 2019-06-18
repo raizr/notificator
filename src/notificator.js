@@ -14,11 +14,12 @@ const timer = ms => new Promise(res => setTimeout(res, ms));
 class Notificator {
   constructor(messageLimit, cacheFileName, delay) {
     this.lastUserId = 0;
+    this.message = '';
     this.cacheFileName = cacheFileName;
     try {
-      this.lastUserId = new mongoose.Types.ObjectId(
-        JSON.parse(fs.readFileSync(this.cacheFileName)),
-      );
+      const [Id, message] = JSON.parse(fs.readFileSync(this.cacheFileName));
+      this.lastUserId = new mongoose.Types.ObjectId(Id);
+      this.message = message;
     } catch (err) {
       logger.info(err.name);
     }
@@ -33,13 +34,16 @@ class Notificator {
       .then(() => {
         logger.info('connected to db');
       })
-      .catch((err) => { throw err; });
+      .catch((err) => { logger.error(err.message); });
+    if (this.lastUserId !== 0 && this.message !== '') {
+      this.sendNotifications(this.message);
+    }
   }
 
   async sendNotification(message, dbArray) {
     this.lastUserId = dbArray.lastId;
     await fs.writeFileSync(this.cacheFileName,
-      JSON.stringify(this.lastUserId),
+      JSON.stringify([this.lastUserId, message]),
       (err) => {
         if (err) throw err;
       });
@@ -81,10 +85,14 @@ class Notificator {
           },
         },
       ]);
-    if (this.lastUserId === 0) {
-      this.lastUserId = (await this.elements)[0].lastId;
+    let idDocs = (await this.elements);
+    if (idDocs.length === 0) {
+      throw new Error('user list is empty');
     }
-    for (let idDocs = (await this.elements); idDocs.length !== 0; idDocs = (await this.elements)) {
+    if (this.lastUserId === 0) {
+      this.lastUserId = idDocs[0].lastId;
+    }
+    for (; idDocs.length !== 0; idDocs = (await this.elements)) {
       await this.sendNotification(message, idDocs[0])
         .catch((err) => { throw err; });
       this.elements = PlayerSchema
@@ -106,4 +114,4 @@ class Notificator {
     });
   }
 }
-module.exports = { Notificator };
+module.exports = { Notificator, logger };

@@ -1,7 +1,7 @@
 const log4js = require('log4js');
 const fs = require('fs');
 const { mongoose, PlayerSchema } = require('./schemas');
-const { vkAPI } = require('./vk-api');
+const { vkAPI } = require('../vkapi/vk-api');
 /*
 log4js.configure({
   appenders: { file: { type: 'file', filename: 'logs/vkapi.log' } },

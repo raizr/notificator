@@ -27,7 +27,7 @@ class VKAPI {
       if (this.sendNotifyCounter >= 3) {
         reject(new VKAPIError(1));
       }
-      if (getRandomInt(0, 100) === 1) {
+      if (getRandomInt(0, 20) === 1) {
         reject(new VKAPIError(2));
       }
       if (!Array.isArray(ids)) {

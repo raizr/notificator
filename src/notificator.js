@@ -4,7 +4,7 @@ const { mongoose, PlayerSchema } = require('./schemas');
 const { vkAPI } = require('../vkapi/vk-api');
 
 log4js.configure({
-  appenders: { file: { type: 'file', filename: 'logs/vkapi.log' } },
+  appenders: { file: { type: 'file', filename: 'logs/notificator.log' } },
   categories: { default: { appenders: ['file'], level: 'info' } },
 });
 
@@ -36,11 +36,12 @@ class Notificator {
     this.mongoose.connect(url, { useCreateIndex: true, useNewUrlParser: true })
       .then(() => {
         logger.info('connected to db');
+        if (this.lastUserId !== 0 && this.message !== '') {
+          this.sendNotifications(this.message)
+            .catch((err) => { logger.error(err.message); });
+        }
       })
       .catch((err) => { logger.error(err.message); });
-    if (this.lastUserId !== 0 && this.message !== '') {
-      this.sendNotifications(this.message);
-    }
   }
 
   async sendNotification(message, dbArray) {
